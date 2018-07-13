@@ -1,0 +1,45 @@
+#debug=1
+#connect to the first available device
+connect
+
+#select analogin
+analogin
+
+#enable channels
+channel=1
+enable=1
+channel=2
+enable=1
+
+
+#set range to 5V pk2pk and offset to 0V for all channels
+channel=0
+range=10V
+offset=0V
+
+#set frequency and samples to acquire
+frequency=10kHz
+samples=1k
+
+#trigger on first channel, rising edge at 1V
+trigger=1
+edge
+rising
+level=1V
+
+#wait a bit for device offset to stabilize
+pause=2s
+
+#start acquistion
+start
+
+#wait for the acquisition to finish
+#
+print=Note that the trigger was set to first channel at 1V rising edge!
+#
+finish
+
+#save acquistion samples samples to file
+save=file1.csv
+#done
+

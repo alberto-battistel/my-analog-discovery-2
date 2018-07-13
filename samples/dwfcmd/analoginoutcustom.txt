@@ -1,0 +1,39 @@
+#debug=1
+#connect to the first available device
+connect
+
+#select analogout first channel and enable
+analogout
+channel=1
+enable=1
+
+#Start to generate waveform from file at 100kHz 
+amplitude=1V
+frequency=1000kHz
+custom=file2.csv
+#wave4k.csv
+start
+
+#Select analogin, enable 2 channels
+analogin
+frequency=100Mhz
+samples=2k
+channel=1
+enable=1
+channel=2
+enable=1
+
+#Wait a bit for device analog circuits to stabilize
+pause=2s
+
+#Start acquistion and wait to finish and save data
+start
+finish
+
+#Select AnalogIn and save enabled channel samples to file
+analogin
+save=file1.csv
+
+analogout
+stop
+#Done

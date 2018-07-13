@@ -1,0 +1,38 @@
+#debug=1
+#Connect to the first available device
+connect
+
+#Select analogout first channel and enable
+analogout
+channel=1
+enable=1
+
+#Select function, configure frequency and ampltiude
+sine
+frequency=15Hz
+amplitude=1V
+
+#Start analogout channel
+start
+
+#Select analogin, enable channel 1
+analogin
+channel=1
+enable=1
+
+#Set frequency and number of samples to acquire
+frequency=10k
+samples=1000
+
+#Wait a bit for device offset to stabilize
+pause=2s
+
+#Perform acquistion and save samples
+start
+finish
+save=file1.csv
+
+#Stop analogout channel 0
+analogout
+channel=1
+stop

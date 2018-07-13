@@ -1,0 +1,44 @@
+#debug=1
+#connect to the first available device
+connect
+
+#configure and start 2 analog out channels
+analogout
+
+channel=1
+enable=1
+phase=0
+
+channel=2
+enable=1
+phase=90
+
+channel=0
+sine
+amplitude=1V
+frequency=1Hz
+
+#run until stopped
+start
+
+#configure analogin record on 2 channels
+analogin
+channel=1
+enable=1
+channel=2
+enable=1
+channel=0
+record
+frequency=10kHz
+run=5s
+range=2V
+
+pause=2s
+start
+
+save=file1.csv
+
+#stop analog out channels
+analogout
+stop
+

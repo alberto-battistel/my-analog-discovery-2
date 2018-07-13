@@ -1,0 +1,21 @@
+#debug=1
+#connect to the first available device
+connect
+
+#select analogin
+analogout
+channel=1
+enable=1
+
+#set ampltitude 1V and offset 0V
+amplitude=1V
+offset=0V
+
+#set frequency and run time
+frequency=10k
+run=5s
+play=file1.csv
+
+#play file
+start
+#done

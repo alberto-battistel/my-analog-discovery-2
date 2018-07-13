@@ -1,0 +1,41 @@
+#debug=1
+#Connect to the first available device
+connect=1
+
+#Select analogout first channel and enable
+analogout
+channel=1
+enable=1
+
+#Select function, configure frequency and ampltiude
+triangle
+frequency=1M
+amplitude=1V
+run=2.25u
+
+#Select analogin, enable channel 1
+analogin
+channel=1
+enable=1
+
+#Set frequency and number of samples to acquire
+frequency=40M
+samples=160
+position=2us
+
+#Wait a bit for device offset to stabilize
+pause=2s
+
+#Start synchronized
+device
+start
+
+#Wait analogin to finish and save samples
+analogin
+finish
+save=file1.csv
+
+#Stop analogout channel 1
+analogout
+channel=1
+stop

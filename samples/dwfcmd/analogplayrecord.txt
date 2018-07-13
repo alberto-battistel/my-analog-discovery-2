@@ -1,0 +1,43 @@
+#debug=1
+
+#Connect to the first available device
+connect
+
+#Enable and configure 2 AnalogIn channels
+analogin
+channel=1
+enable=1
+channel=2
+enable=1
+
+channel=0
+range=4V
+offset=0V
+record
+frequency=5k
+run=5
+
+#Enable and configure 2 AnalogOut channels
+analogout
+channel=1
+enable=1
+play
+channel=2
+enable=1
+play
+
+channel=0
+amplitude=1V
+offset=0V
+frequency=10k
+run=5
+play=play2.csv
+
+pause=2s
+device
+start
+
+analogin
+save=file1.csv
+
+#Done

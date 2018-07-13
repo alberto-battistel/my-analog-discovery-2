@@ -1,0 +1,38 @@
+#debug=1
+#Connect to the first available device
+connect
+
+#Select analogin, enable channel 1 and 2
+analogin
+channel=1
+enable=1
+channel=2
+enable=1
+
+#Select all channels, set range to and offset
+channel=0
+range=10V
+offset=0V
+
+#Set frequency and number of samples to acquire
+frequency=10MHz
+samples=1000
+
+#Wait a bit for device analog circuit to stabilize
+pause=2s
+
+#Start acquistion
+start
+
+#Wait for the acquisition to finish
+finish
+
+#Save samples of channel 1 to file
+analogin
+channel=1
+save=file1.csv
+
+#Save samples of enabled channels to file
+analogin
+channel=0
+save=file2.csv

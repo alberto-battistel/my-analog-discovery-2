@@ -1,0 +1,29 @@
+#debug=1
+#connect to the first available device
+connect
+
+#set watch timer to 11 seconds to not to disturb our long recording process
+watch=12s
+
+#select analogin and configure for recording, enable channel 1
+analogin
+record
+channel=1
+enable=1
+
+#set range to 5V pk2pk and offset to 0V
+range=10V
+offset=0V
+
+#set frequency and record length
+frequency=10k
+run=10s
+
+#wait a bit for device offset to stabilize
+pause=2s
+
+#perform recording
+start
+
+save=file1.csv
+#done

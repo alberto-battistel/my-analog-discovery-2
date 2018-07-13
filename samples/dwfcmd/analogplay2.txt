@@ -1,0 +1,30 @@
+#debug=1
+#connect to the first available device
+connect
+
+#select analogin
+analogout
+trigger=none
+frequency=10k
+
+#configure first channel
+channel=1
+enable=1
+play
+amplitude=1V
+offset=1V
+
+#configure second channel
+channel=2
+enable=1
+play
+amplitude=2V
+offset=2V
+
+#configure common parameters
+channel=0
+play=file2.csv
+run=5s
+
+start
+#done
