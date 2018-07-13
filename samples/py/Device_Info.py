@@ -20,7 +20,7 @@ else:
 # check library loading errors
 szerr = create_string_buffer(512)
 dwf.FDwfGetLastErrorMsg(szerr)
-print szerr.value
+print (szerr.value)
 
 # declare variables
 IsInUse = c_bool()
@@ -45,50 +45,50 @@ serialnum = create_string_buffer(16)
 # print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print "DWF Version: "+version.value
+print ("DWF Version: ",version.value.decode("utf-8"))
 
 # enumerate connected devices
 dwf.FDwfEnum(c_int(0), byref(cDevice))
-print "Number of Devices: "+str(cDevice.value)
+print ("Number of Devices: "+str(cDevice.value))
 
 # open devices
 for iDevice in range(0, cDevice.value):
     dwf.FDwfEnumDeviceName(c_int(iDevice), devicename)
     dwf.FDwfEnumSN(c_int(iDevice), serialnum)
-    print "------------------------------"
-    print "Device "+str(iDevice+1)+" : "
-    print "\t" + devicename.value
-    print "\t" + serialnum.value
+    print ("------------------------------")
+    print ("Device "+str(iDevice+1)+" : ")
+    print ("\t", devicename.value.decode("utf-8"))
+    print ("\t", serialnum.value.decode("utf-8"))
     dwf.FDwfDeviceOpen(c_int(iDevice), byref(hdwf))
     if hdwf.value == 0:
         szerr = create_string_buffer(512)
         dwf.FDwfGetLastErrorMsg(szerr)
-        print szerr.value
+        print (szerr.value.decode("utf-8"))
         continue
     
-    print ""
+    print ("")
     dwf.FDwfAnalogInChannelCount(hdwf, byref(int0))
-    print "AnalogIn channels: "+str(int0.value)
+    print ("AnalogIn channels: "+str(int0.value))
 
     dwf.FDwfAnalogInBufferSizeInfo(hdwf, 0, byref(int0))
-    print "Buffer size: "+str(int0.value)
+    print ("Buffer size: "+str(int0.value))
 
     dwf.FDwfAnalogInBitsInfo(hdwf, byref(int0))
-    print "ADC bits: "+str(int0.value)
+    print ("ADC bits: "+str(int0.value))
 
     dwf.FDwfAnalogInChannelRangeInfo(hdwf, byref(dbl0), byref(dbl1), byref(dbl2))
-    print "Range from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(dbl2.value)+" steps"
+    print ("Range from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(dbl2.value)+" steps")
 
     dwf.FDwfAnalogInChannelOffsetInfo(hdwf, byref(dbl0), byref(dbl1), byref(dbl2))
-    print "Offset from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(dbl2.value)+" steps"
+    print ("Offset from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(dbl2.value)+" steps")
 
     
-    print ""
+    print ("")
     dwf.FDwfAnalogOutCount(hdwf, byref(cChannel))
-    print "AnalogOut channels: "+str(cChannel.value)
+    print ("AnalogOut channels: "+str(cChannel.value))
     
     for iChannel in range(0, cChannel.value):
-        print "Channel "+str(iChannel+1)
+        print ("Channel "+str(iChannel+1))
 
         fsnodes = c_int()
         dwf.FDwfAnalogOutNodeInfo(hdwf, c_int(iChannel), byref(fsnodes))
@@ -97,79 +97,79 @@ for iDevice in range(0, cDevice.value):
             if (fsnodes.value & (1<<iNode)) == 0:  # bits: AM | FM | Carrier
                 continue
                 
-            print "Node: "+rgszAnalogOutNode[iNode]
+            print ("Node: "+rgszAnalogOutNode[iNode])
 
             dwf.FDwfAnalogOutNodeDataInfo(hdwf, iChannel, iNode, 0, byref(int0))
-            print "Buffer size: "+str(int0.value)
+            print ("Buffer size: "+str(int0.value))
             
             dwf.FDwfAnalogOutNodeAmplitudeInfo(hdwf, iChannel, iNode, byref(dbl0), byref(dbl1))
-            print "Amplitude from "+str(dbl0.value)+" to "+str(dbl1.value)
+            print ("Amplitude from "+str(dbl0.value)+" to "+str(dbl1.value))
 
             dwf.FDwfAnalogOutNodeOffsetInfo(hdwf, iChannel, iNode, byref(dbl0), byref(dbl1))
-            print "Offset from "+str(dbl0.value)+" to "+str(dbl1.value)
+            print ( "Offset from "+str(dbl0.value)+" to "+str(dbl1.value))
 
             dwf.FDwfAnalogOutNodeFrequencyInfo(hdwf, iChannel, iNode, byref(dbl0), byref(dbl1))
-            print "Frequency from "+str(dbl0.value)+" to "+str(dbl1.value)
+            print ("Frequency from "+str(dbl0.value)+" to "+str(dbl1.value))
 
-    print ""
+    print ("")
     dwf.FDwfAnalogIOChannelCount(hdwf, byref(cChannel))
-    print "AnalogIO channels: "+str(cChannel.value)
+    print ("AnalogIO channels: "+str(cChannel.value))
 
     dwf.FDwfAnalogIOEnableInfo(hdwf, byref(int0), byref(int1))
-    print "Master Enable: "+("Setting " if int0!=0 else "")+("Reading " if int1!=0 else "")
+    print ("Master Enable: "+("Setting " if int0!=0 else "")+("Reading " if int1!=0 else ""))
 
     for iChannel in range(0, cChannel.value):
 
         dwf.FDwfAnalogIOChannelName(hdwf, iChannel, sz0, sz1)
-        print "Channel "+str(iChannel+1)+" Name: \""+sz0.value+"\" Label: \""+sz1.value+"\""
+        print ("Channel ", str(iChannel+1), " Name: \"", sz0.value.decode("utf-8"), "\" Label: \"", sz1.value.decode("utf-8") ,"\"")
 
         dwf.FDwfAnalogIOChannelInfo(hdwf, iChannel, byref(cNode))
         
         for iNode in range(0, cNode.value):
             dwf.FDwfAnalogIOChannelNodeName(hdwf, iChannel, iNode, sz0, sz1)
-            print "Node "+str(iNode+1)+" Name: \""+sz0.value+"\" Unit: \""+sz1.value+"\""
+            print ("Node ", str(iNode+1) ," Name: \"", sz0.value.decode("utf-8"), "\" Unit: \"", sz1.value.decode("utf-8"), "\"")
 
             dwf.FDwfAnalogIOChannelNodeSetInfo(hdwf, iChannel, iNode, byref(dbl0), byref(dbl1), byref(int0))
             if int0.value==1 :
                 if dbl0.value == dbl1.value  :
-                    print "Constant output "+str(dbl0.value)
+                    print ("Constant output "+str(dbl0.value))
                 else:
-                    print "Non settable range from "+str(dbl0)+" to "+str(dbl1)
+                    print ("Non settable range from "+str(dbl0)+" to "+str(dbl1))
             elif int0.value>1 :
-                print "Setting from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(int0.value)+" steps"
+                print ("Setting from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(int0.value)+" steps")
 
             dwf.FDwfAnalogIOChannelNodeStatusInfo(hdwf, iChannel, iNode, byref(dbl0), byref(dbl1), byref(int0))
             if int0.value==1 :
                 if dbl0.value == dbl1.value  :
-                    print "Constant input "+str(dbl0.value)
+                    print ("Constant input "+str(dbl0.value))
                 else:
-                    print "Input range from "+str(dbl0.value)+" to "+str(dbl1.value)
+                    print ("Input range from "+str(dbl0.value)+" to "+str(dbl1.value))
             elif int0.value>1 :
-                print "Reading from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(int0.value)+" steps"
+                print ("Reading from "+str(dbl0.value)+" to "+str(dbl1.value)+" in "+str(int0.value)+" steps")
 
                 
-    print ""
+    print ("")
     dwf.FDwfDigitalInBitsInfo(hdwf, byref(int0))
-    print "DigitalIn channels: "+str(int0.value)
+    print ("DigitalIn channels: "+str(int0.value))
 
     dwf.FDwfDigitalInBufferSizeInfo(hdwf, byref(int0))
-    print "Buffer size: "+str(int0.value)
+    print ("Buffer size: "+str(int0.value))
 
     
-    print ""
+    print ("")
     dwf.FDwfDigitalOutCount(hdwf, byref(int0))
-    print "DigitalOut channels: "+str(int0.value)
+    print ("DigitalOut channels: "+str(int0.value))
 
     dwf.FDwfDigitalOutDataInfo(hdwf, c_int(0), byref(int0))
-    print "Custom size: "+str(int0.value)
+    print ("Custom size: "+str(int0.value))
 
     
-    print ""
-    print "DigitalIO information:"
+    print ("")
+    print ("DigitalIO information:")
     dwf.FDwfDigitalIOOutputEnableInfo(hdwf, byref(uint0))
-    print "OE Mask: "+hex(uint0.value)
+    print ("OE Mask: "+hex(uint0.value))
     dwf.FDwfDigitalIOOutputInfo(hdwf, byref(uint0))
-    print "Output : "+hex(uint0.value)
+    print ("Output : "+hex(uint0.value))
     dwf.FDwfDigitalIOInputInfo(hdwf, byref(uint0))
-    print "Input  : "+hex(uint0.value)
+    print ("Input  : "+hex(uint0.value))
 
