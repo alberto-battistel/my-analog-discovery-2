@@ -7,12 +7,19 @@
        Python 2.7, numpy, matplotlib
        python-dateutil, pyparsing
 """
+from __future__ import division
+from __future__ import print_function
+from builtins import range
+from past.utils import old_div
 from ctypes import *
 from dwfconstants import *
 import math
 import time
 import matplotlib.pyplot as plt
 import sys
+
+from scipy.fftpack import fft
+import numpy as np
 
 if sys.platform.startswith("win"):
     dwf = cdll.dwf
@@ -25,7 +32,7 @@ else:
 hdwf = c_int()
 sts = c_byte()
 hzAcq = c_double(100000)
-nSamples = 200000
+nSamples = 2000
 rgdSamples = (c_double*nSamples)()
 cAvailable = c_int()
 cLost = c_int()
@@ -36,25 +43,25 @@ fCorrupted = 0
 #print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print "DWF Version: "+version.value
+print("DWF Version: "+version.value.decode("utf-8"))
 
 #open device
-print "Opening first device"
+print("Opening first device")
 dwf.FDwfDeviceOpen(c_int(-1), byref(hdwf))
 
 if hdwf.value == hdwfNone.value:
     szerr = create_string_buffer(512)
     dwf.FDwfGetLastErrorMsg(szerr)
-    print szerr.value
-    print "failed to open device"
+    print(szerr.value.decode("utf-8"))
+    print("failed to open device")
     quit()
 
-print "Preparing to read sample..."
+print("Preparing to read sample...")
 
-print "Generating sine wave..."
+print("Generating sine wave...")
 dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_bool(True))
 dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), AnalogOutNodeCarrier, funcSine)
-dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(1))
+dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(2000))
 dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(2))
 dwf.FDwfAnalogOutConfigure(hdwf, c_int(0), c_bool(True))
 
@@ -63,14 +70,14 @@ dwf.FDwfAnalogInChannelEnableSet(hdwf, c_int(0), c_bool(True))
 dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(0), c_double(5))
 dwf.FDwfAnalogInAcquisitionModeSet(hdwf, acqmodeRecord)
 dwf.FDwfAnalogInFrequencySet(hdwf, hzAcq)
-dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(nSamples/hzAcq.value)) # -1 infinite record length
+dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(old_div(nSamples,hzAcq.value))) # -1 infinite record length
 
 #wait at least 2 seconds for the offset to stabilize
 time.sleep(2)
 
 #begin acquisition
 dwf.FDwfAnalogInConfigure(hdwf, c_int(0), c_int(1))
-print "   waiting to finish"
+print("   waiting to finish")
 
 cSamples = 0
 
@@ -100,16 +107,18 @@ while cSamples < nSamples:
     cSamples += cAvailable.value
 
 
-print "Recording finished"
+print("Recording finished")
 if fLost:
-    print "Samples were lost! Reduce frequency"
+    print("Samples were lost! Reduce frequency")
 if fCorrupted:
-    print "Samples could be corrupted! Reduce frequency"
+    print("Samples could be corrupted! Reduce frequency")
 
-f = open("record.csv", "w")
-for v in rgdSamples:
-    f.write("%s\n" % v)
-f.close()
+dwf.FDwfDeviceCloseAll()
+
+#f = open("record.csv", "w")
+#for v in rgdSamples:
+#    f.write("%s\n" % v)
+#f.close()
   
 rgpy=[0.0]*len(rgdSamples)
 for i in range(0,len(rgpy)):
@@ -119,3 +128,7 @@ plt.plot(rgpy)
 plt.show()
 
 
+a = np.array(rgpy)
+A = fft(a)/len(a)
+plt.figure(2)
+plt.semilogy(abs(A))
