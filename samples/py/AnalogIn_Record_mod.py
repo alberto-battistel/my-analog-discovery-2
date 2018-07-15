@@ -32,20 +32,14 @@ else:
 #declare ctype variables
 hdwf = c_int()
 sts = c_byte()
-hzAcq = c_double(5000)
-nSamples = 15000
+hzAcq = c_double(1000000)
+nSamples = 1000000
 rgdSamples = (c_double*nSamples)()
-cAvailable = c_int()
-cLost = c_int()
-cCorrupted = c_int()
-fLost = 0
-fCorrupted = 0
-acqMode = acqmodeRecord
-
+rgdSamples16 = (c_short*nSamples)()
 
 pidxWrite = c_int()
-acqMode = acqmodeScanShift
-
+acqMode = acqmodeScanScreen
+filterMode = filterAverage
 
 #print DWF version
 version = create_string_buffer(16)
@@ -68,7 +62,7 @@ print("Preparing to read sample...")
 print("Generating sine wave...")
 dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_bool(True))
 dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), AnalogOutNodeCarrier, funcSine)
-dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(3))
+dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(500000))
 dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(2))
 dwf.FDwfAnalogOutConfigure(hdwf, c_int(0), c_bool(True))
 
@@ -77,8 +71,12 @@ dwf.FDwfAnalogInChannelEnableSet(hdwf, c_int(0), c_bool(True))
 dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(0), c_double(5))
 dwf.FDwfAnalogInAcquisitionModeSet(hdwf, acqMode)
 dwf.FDwfAnalogInFrequencySet(hdwf, hzAcq)
+dwf.FDwfAnalogInChannelFilterSet(hdwf, c_int(0), filterMode)
+
 dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(old_div(nSamples,hzAcq.value))) # -1 infinite record length
 
+bufferLength = 8192
+dwf.FDwfAnalogInBufferSizeSet(hdwf, c_int(bufferLength))
 sts = c_int()
 dwf.FDwfAnalogInBufferSizeGet(hdwf, byref(sts))
 print("Buffer length ", sts.value)
@@ -90,77 +88,67 @@ time.sleep(2)
 #begin acquisition
 dwf.FDwfAnalogInConfigure(hdwf, c_int(0), c_int(1))
 print("   waiting to finish")
-time.sleep(0.5)
+#time.sleep(0.1)
 
 cSamples = 0
 sts = c_ubyte()
 cSamplesValid = c_int()
-idx = 0
+idx = 1
 pidxWrite = c_int()
-
-
+iterations = 1;
 
 while cSamples < nSamples:
+    # Count iterations
+    iterations += 1
     dwf.FDwfAnalogInStatus(hdwf, c_int(1), byref(sts))
     # print(sts.value)
     if cSamples == 0 and (sts == DwfStateConfig or sts == DwfStatePrefill or sts == DwfStateArmed) :
         # Acquisition not yet started.
         continue
+    
+    # Read index
     dwf.FDwfAnalogInStatusIndexWrite(hdwf, byref(pidxWrite))  
+    # Calculate how many new samples are in the buffer    
+    availableSamples = (pidxWrite.value - idx)%(bufferLength)
     
-#    if cSamplesValid.value == 0:
-#        continue
+    if cSamples + availableSamples > nSamples :
+        availableSamples = nSamples-cSamples
     
-    cSamplesValid = c_int((pidxWrite.value - idx-1)%(bufferLength-1))
-    if cSamples+cSamplesValid.value > nSamples :
-        cSamplesValid = c_int(nSamples-cSamples)
-        
-    dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), cSamplesValid)
-    idx = (idx + cSamplesValid.value)%(bufferLength-1)
-    #dwf.FDwfAnalogInStatusData(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), cSamplesValid)
-    cSamples += cSamplesValid.value 
-    
-    print("pidxWrite: ", pidxWrite.value, ", Valid samples: ", cSamplesValid.value, ", cSamples: ", cSamples)
-#    cSamples += cLost.value
-#
-#    if cLost.value :
-#        fLost = 1
-#    if cCorrupted.value :
-#        fCorrupted = 1
-#
-#    if cAvailable.value==0 :
-#        continue
-#
-#    if cSamples+cAvailable.value > nSamples :
-#        cAvailable = c_int(nSamples-cSamples)
-#    
-#    dwf.FDwfAnalogInStatusData(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), cAvailable) # get channel 1 data
-#    #dwf.FDwfAnalogInStatusData(hdwf, c_int(1), byref(rgdSamples, sizeof(c_double)*cSamples), cAvailable) # get channel 2 data
-#    cSamples += cAvailable.value
+    if idx + availableSamples <= bufferLength:
+        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples))
+        cSamples += availableSamples
+        #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples, ", cSamples: ", cSamples)
+        idx = pidxWrite.value
+    else:
+        #print("wrapping")
+        #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples)
+        availableSamples1 = bufferLength-idx
+        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples1))
+        cSamples += availableSamples1
+        #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples1, ", cSamples: ", cSamples)
+        idx = 0
+        availableSamples2 = availableSamples-availableSamples1+1
+        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples2))
+        cSamples += availableSamples2
+        #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples2, ", cSamples: ", cSamples)
+        idx = pidxWrite.value
 
-print("idx: ", idx, ", Valid samples: ", cSamplesValid.value, ", cSamples: ", cSamples)
+#print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples, ", cSamples: ", cSamples)
 print("Recording finished")
-if fLost:
-    print("Samples were lost! Reduce frequency")
-if fCorrupted:
-    print("Samples could be corrupted! Reduce frequency")
+
 
 dwf.FDwfDeviceCloseAll()
 
-#f = open("record.csv", "w")
-#for v in rgdSamples:
-#    f.write("%s\n" % v)
-#f.close()
   
 rgpy=[0.0]*len(rgdSamples)
 for i in range(0,len(rgpy)):
     rgpy[i]=rgdSamples[i]
 
-plt.plot(rgpy)
+plt.plot(rgpy, '.')
 plt.show()
 
 
-#a = np.array(rgpy)
-#A = fft(a)/len(a)
-#plt.figure(2)
-#plt.semilogy(abs(A))
+a = np.array(rgpy)
+A = fft(a)/len(a)
+plt.figure(2)
+plt.semilogy(abs(A))
