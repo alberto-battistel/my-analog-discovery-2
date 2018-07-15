@@ -20,7 +20,7 @@ import sys
 
 from scipy.fftpack import fft
 import numpy as np
-
+#from Switch import *
 
 if sys.platform.startswith("win"):
     dwf = cdll.dwf
@@ -32,11 +32,10 @@ else:
 #declare ctype variables
 hdwf = c_int()
 sts = c_byte()
-hzAcq = c_double(1000000)
-hzGen = c_double(1000000/8)
-nSamples = 1000000
-rgdSamples = (c_double*nSamples)()
-#rgdSamples16 = (c_short*nSamples)()
+hzAcq = c_double(5000)
+hzGen = c_double(10)
+nSamples = 50000
+rgdSamples16 = (c_short*nSamples)()
 
 pidxWrite = c_int()
 acqMode = acqmodeScanScreen
@@ -95,7 +94,7 @@ sts = c_ubyte()
 cSamplesValid = c_int()
 idx = 1
 pidxWrite = c_int()
-iterations = 1;
+iterations = 0;
 
 while cSamples < nSamples:
     # Count iterations
@@ -115,7 +114,7 @@ while cSamples < nSamples:
         availableSamples = nSamples-cSamples
     
     if idx + availableSamples <= bufferLength:
-        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples))
+        dwf.FDwfAnalogInStatusData16(hdwf, c_int(0), byref(rgdSamples16, sizeof(c_short)*cSamples), c_int(idx), c_int(availableSamples))
         cSamples += availableSamples
         #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples, ", cSamples: ", cSamples)
         idx = pidxWrite.value
@@ -123,12 +122,12 @@ while cSamples < nSamples:
         #print("wrapping")
         #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples)
         availableSamples1 = bufferLength-idx
-        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples1))
+        dwf.FDwfAnalogInStatusData16(hdwf, c_int(0), byref(rgdSamples16, sizeof(c_short)*cSamples), c_int(idx), c_int(availableSamples1))
         cSamples += availableSamples1
         #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples1, ", cSamples: ", cSamples)
         idx = 0
         availableSamples2 = availableSamples-availableSamples1+1
-        dwf.FDwfAnalogInStatusData2(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), c_int(idx), c_int(availableSamples2))
+        dwf.FDwfAnalogInStatusData16(hdwf, c_int(0), byref(rgdSamples16, sizeof(c_short)*cSamples), c_int(idx), c_int(availableSamples2))
         cSamples += availableSamples2
         #print(iterations, "idx: ", idx, ", pidxWrite: ", pidxWrite.value, ", Valid samples: ", availableSamples2, ", cSamples: ", cSamples)
         idx = pidxWrite.value
@@ -140,9 +139,9 @@ print("Recording finished")
 dwf.FDwfDeviceCloseAll()
 
 #   
-rgpy=[0.0]*len(rgdSamples)
+rgpy=[0.0]*len(rgdSamples16)
 for i in range(0,len(rgpy)):
-    rgpy[i]=rgdSamples[i]
+    rgpy[i]=rgdSamples16[i]
 
 # Plot
 plt.figure(1)
