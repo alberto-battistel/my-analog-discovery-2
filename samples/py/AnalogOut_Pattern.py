@@ -1,3 +1,7 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import range
+from past.utils import old_div
 from ctypes import *
 from dwfconstants import *
 import time
@@ -13,7 +17,7 @@ else:
 #print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print "DWF Version: "+version.value
+print("DWF Version: "+version.value)
 
 #declare ctype variables
 hdwf = c_int()
@@ -23,7 +27,7 @@ hdwf = c_int()
 dwf.FDwfDeviceOpen(c_int(-1), byref(hdwf))
 
 if hdwf.value == hdwfNone.value:
-    print "failed to open device"
+    print("failed to open device")
     quit()
 
 hzRate = 1e6
@@ -44,13 +48,13 @@ dwf.FDwfAnalogOutIdleSet(hdwf, channel, c_int(1)) # DwfAnalogOutIdleOffset
 dwf.FDwfAnalogOutNodeFunctionSet(hdwf, channel, AnalogOutNodeCarrier, c_int(31)) # funcPlay
 dwf.FDwfAnalogOutNodeDataSet(hdwf, channel, AnalogOutNodeCarrier, rgdSamples, cSamples)
 dwf.FDwfAnalogOutNodeFrequencySet(hdwf, channel, AnalogOutNodeCarrier, c_double(hzRate)) 
-dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(cSamples/hzRate)) # run for pattern duration
+dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(old_div(cSamples,hzRate))) # run for pattern duration
 dwf.FDwfAnalogOutRepeatSet(hdwf, channel, c_int(1)) # repeat once
 
 dwf.FDwfAnalogOutConfigure(hdwf, channel, c_bool(True))
 
-print "Generating pattern ..."
+print("Generating pattern ...")
 time.sleep(1)
 
-print "done."
+print("done.")
 dwf.FDwfDeviceCloseAll() 
