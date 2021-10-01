@@ -51,7 +51,7 @@ channel = c_int(0) # AWG 1
 # print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print("DWF Version: "+version.value)
+print("DWF Version: "+version.value.decode("utf-8"))
 
 # open device
 print("Opening first device...")

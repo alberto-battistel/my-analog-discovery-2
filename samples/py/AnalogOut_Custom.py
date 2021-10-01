@@ -28,7 +28,7 @@ for i in range(0,len(rgdSamples)):
 #print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print("DWF Version: "+version.value)
+print("DWF Version: "+version.value.decode("utf-8"))
 
 #open device
 "Opening first device..."

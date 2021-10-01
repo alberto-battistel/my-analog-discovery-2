@@ -32,15 +32,15 @@ else:
 #declare ctype variables
 hdwf = c_int()
 sts = c_byte()
-hzAcq = c_double(1000000)
-hzGen = c_double(1000000/8)
-nSamples = 1000000
+hzAcq = c_double(100000)
+hzGen = c_double(6.103515625e3)
+nSamples = int(131072)
 rgdSamples = (c_double*nSamples)()
 #rgdSamples16 = (c_short*nSamples)()
 
 pidxWrite = c_int()
 acqMode = acqmodeScanScreen
-filterMode = filterAverage
+#filterMode = filterAverage
 
 #print DWF version
 version = create_string_buffer(16)
@@ -75,7 +75,7 @@ dwf.FDwfAnalogInFrequencySet(hdwf, hzAcq)
 dwf.FDwfAnalogInChannelFilterSet(hdwf, c_int(0), filterMode)
 
 
-bufferLength = 8192
+bufferLength = int(8192)
 dwf.FDwfAnalogInBufferSizeSet(hdwf, c_int(bufferLength))
 sts = c_int()
 dwf.FDwfAnalogInBufferSizeGet(hdwf, byref(sts))

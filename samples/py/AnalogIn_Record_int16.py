@@ -9,7 +9,6 @@
 """
 from __future__ import division
 from __future__ import print_function
-from builtins import range
 from past.utils import old_div
 from ctypes import *
 from dwfconstants import *
@@ -17,6 +16,10 @@ import math
 import time
 import matplotlib.pyplot as plt
 import sys
+import numpy as np
+from scipy.fftpack import fft
+from numpy import arange,array,ones,linalg
+import time
 
 if sys.platform.startswith("win"):
     dwf = cdll.dwf
@@ -28,9 +31,10 @@ else:
 #declare ctype variables
 hdwf = c_int()
 sts = c_byte()
-hzAcq = c_double(500000)
-nSamples = int(131.072e3)
-rgdSamples = (c_double*nSamples)()
+hzAcq = c_double(4e5)
+nSamples = 2**22
+ch0Samples = (c_int16*nSamples)()
+ch1Samples = (c_int16*nSamples)()
 cAvailable = c_int()
 cLost = c_int()
 cCorrupted = c_int()
@@ -58,13 +62,15 @@ print("Preparing to read sample...")
 print("Generating sine wave...")
 dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_bool(True))
 dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), AnalogOutNodeCarrier, funcSine)
-dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(6.103515625e3))
+dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(old_div(1e8,2**16)))
 dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(2))
 dwf.FDwfAnalogOutConfigure(hdwf, c_int(0), c_bool(True))
 
 #set up acquisition
 dwf.FDwfAnalogInChannelEnableSet(hdwf, c_int(0), c_bool(True))
 dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(0), c_double(5))
+dwf.FDwfAnalogInChannelEnableSet(hdwf, c_int(1), c_bool(True))
+dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(1), c_double(5))
 dwf.FDwfAnalogInAcquisitionModeSet(hdwf, acqmodeRecord)
 dwf.FDwfAnalogInFrequencySet(hdwf, hzAcq)
 dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(old_div(nSamples,hzAcq.value))) # -1 infinite record length
@@ -73,16 +79,21 @@ dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(old_div(nSamples,hzAcq.value))) #
 time.sleep(2)
 
 #begin acquisition
+t0 = time.process_time()
 dwf.FDwfAnalogInConfigure(hdwf, c_int(0), c_int(1))
 print("   waiting to finish")
 
 cSamples = 0
+Lost = []
+Corrupted = []
+tstart = time.process_time()
+print("setting time: ", tstart-t0)
+t = []
 
 while cSamples < nSamples:
     dwf.FDwfAnalogInStatus(hdwf, c_int(1), byref(sts))
     if cSamples == 0 and (sts == DwfStateConfig or sts == DwfStatePrefill or sts == DwfStateArmed) :
         # Acquisition not yet started.
-        print("0")
         continue
 
     dwf.FDwfAnalogInStatusRecord(hdwf, byref(cAvailable), byref(cLost), byref(cCorrupted))
@@ -91,8 +102,10 @@ while cSamples < nSamples:
 
     if cLost.value :
         fLost = 1
+        Lost.append(cLost.value)
     if cCorrupted.value :
         fCorrupted = 1
+        Corrupted.append(cCorrupted.value)
 
     if cAvailable.value==0 :
         continue
@@ -100,10 +113,13 @@ while cSamples < nSamples:
     if cSamples+cAvailable.value > nSamples :
         cAvailable = c_int(nSamples-cSamples)
     
-    dwf.FDwfAnalogInStatusData(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double)*cSamples), cAvailable) # get channel 1 data
-    #dwf.FDwfAnalogInStatusData(hdwf, c_int(1), byref(rgdSamples, sizeof(c_double)*cSamples), cAvailable) # get channel 2 data
+    dwf.FDwfAnalogInStatusData16(hdwf, c_int(0), byref(ch0Samples, sizeof(c_int16)*cSamples), c_int(0), cAvailable) # get channel 1 data
+    dwf.FDwfAnalogInStatusData16(hdwf, c_int(1), byref(ch1Samples, sizeof(c_int16)*cSamples), c_int(1), cAvailable) # get channel 2 data
     cSamples += cAvailable.value
+#    tstart = time.process_time()-tstart
+    t.append(time.process_time()-tstart)
 
+dwf.FDwfDeviceCloseAll()
 
 print("Recording finished")
 if fLost:
@@ -111,23 +127,28 @@ if fLost:
 if fCorrupted:
     print("Samples could be corrupted! Reduce frequency")
 
-dwf.FDwfDeviceCloseAll()
 
-#f = open("record.csv", "w")
-#for v in rgdSamples:
-#    f.write("%s\n" % v)
-#f.close()
-  
-rgpy=[0.0]*len(rgdSamples)
-for i in range(0,len(rgpy)):
-    rgpy[i]=rgdSamples[i]
+data = np.fromiter(ch0Samples, dtype = np.int16)
 
-plt.plot(rgpy)
+plt.figure(1)
+plt.clf()
+plt.plot(data)
 plt.show()
 
 # Plot fft
-a = np.array(rgpy)
+a = np.array(data)
 A = fft(a)/len(a)
 plt.figure(2)
 plt.clf()
 plt.semilogy(abs(A))
+
+plt.figure(3)
+plt.clf()
+plt.plot(t)
+
+xi = arange(0,len(t))
+A = array([ xi, ones(len(t))])
+w = linalg.lstsq(A.T,t)[0] # obtaining the parameters
+
+print('Cycle time: ', w[0]*1000, 'ms')
+print('Samples per cycle: ', w[0]*hzAcq.value)

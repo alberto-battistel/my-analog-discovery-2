@@ -17,7 +17,7 @@ else:
 #print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print("DWF Version: "+version.value)
+print("DWF Version: "+version.value.decode("utf-8"))
 
 #declare ctype variables
 hdwf = c_int()
