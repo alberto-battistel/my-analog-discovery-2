@@ -14,7 +14,7 @@ elif sys.platform.startswith("darwin"):
 else:
     dwf = cdll.LoadLibrary("libdwf.so")
 
-hzFreq = 1e4
+hzFreq = 1000
 cSamples = 4096
 # declare ctype variables
 hdwf = c_int()
@@ -45,14 +45,14 @@ dwf.FDwfAnalogOutNodeDataSet(hdwf, channel, AnalogOutNodeCarrier, rgdSamples, c_
 dwf.FDwfAnalogOutNodeFrequencySet(hdwf, channel, AnalogOutNodeCarrier, c_double(hzFreq))
 dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, channel, AnalogOutNodeCarrier, c_double(2.0))
 
-dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(old_div(2.0, hzFreq)))  # run for 2 periods
-dwf.FDwfAnalogOutWaitSet(hdwf, channel, c_double(old_div(1.0, hzFreq)))  # wait one pulse time
-dwf.FDwfAnalogOutRepeatSet(hdwf, channel, c_int(3))  # repeat 5 times
+dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(0.005))  # run for 2 periods
+dwf.FDwfAnalogOutWaitSet(hdwf, channel, c_double(0))  # wait one pulse time
+dwf.FDwfAnalogOutRepeatSet(hdwf, channel, c_int(1))  # repeat 5 times
 
 dwf.FDwfAnalogOutConfigure(hdwf, channel, c_bool(True))
 
 print("Generating waveform ...")
-time.sleep(1)
+time.sleep(0.1)
 
 print("done.")
 dwf.FDwfDeviceCloseAll()
