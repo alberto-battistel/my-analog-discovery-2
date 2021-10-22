@@ -16,21 +16,21 @@ else:
 
 hzFreq = 1e4
 cSamples = 4096
-#declare ctype variables
+# declare ctype variables
 hdwf = c_int()
-rgdSamples = (c_double*cSamples)()
+rgdSamples = (c_double * cSamples)()
 channel = c_int(0)
 
 # samples between -1 and +1
-for i in range(0,len(rgdSamples)):
-    rgdSamples[i] = 1.0*i/cSamples;
+for i in range(0, len(rgdSamples)):
+    rgdSamples[i] = 1.0 * i / cSamples
 
-#print DWF version
+# print DWF version
 version = create_string_buffer(16)
 dwf.FDwfGetVersion(version)
-print("DWF Version: "+version.value.decode("utf-8"))
+print("DWF Version: " + version.value.decode("utf-8"))
 
-#open device
+# open device
 "Opening first device..."
 dwf.FDwfDeviceOpen(c_int(-1), byref(hdwf))
 
@@ -40,14 +40,14 @@ if hdwf.value == hdwfNone.value:
 
 print("Generating custom waveform...")
 dwf.FDwfAnalogOutNodeEnableSet(hdwf, channel, AnalogOutNodeCarrier, c_bool(True))
-dwf.FDwfAnalogOutNodeFunctionSet(hdwf, channel, AnalogOutNodeCarrier, funcCustom) 
+dwf.FDwfAnalogOutNodeFunctionSet(hdwf, channel, AnalogOutNodeCarrier, funcCustom)
 dwf.FDwfAnalogOutNodeDataSet(hdwf, channel, AnalogOutNodeCarrier, rgdSamples, c_int(cSamples))
-dwf.FDwfAnalogOutNodeFrequencySet(hdwf, channel, AnalogOutNodeCarrier, c_double(hzFreq)) 
-dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, channel, AnalogOutNodeCarrier, c_double(2.0)) 
+dwf.FDwfAnalogOutNodeFrequencySet(hdwf, channel, AnalogOutNodeCarrier, c_double(hzFreq))
+dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, channel, AnalogOutNodeCarrier, c_double(2.0))
 
-dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(old_div(2.0,hzFreq))) # run for 2 periods
-dwf.FDwfAnalogOutWaitSet(hdwf, channel, c_double(old_div(1.0,hzFreq))) # wait one pulse time
-dwf.FDwfAnalogOutRepeatSet(hdwf, channel, c_int(3)) # repeat 5 times
+dwf.FDwfAnalogOutRunSet(hdwf, channel, c_double(old_div(2.0, hzFreq)))  # run for 2 periods
+dwf.FDwfAnalogOutWaitSet(hdwf, channel, c_double(old_div(1.0, hzFreq)))  # wait one pulse time
+dwf.FDwfAnalogOutRepeatSet(hdwf, channel, c_int(3))  # repeat 5 times
 
 dwf.FDwfAnalogOutConfigure(hdwf, channel, c_bool(True))
 
@@ -55,4 +55,4 @@ print("Generating waveform ...")
 time.sleep(1)
 
 print("done.")
-dwf.FDwfDeviceCloseAll() 
+dwf.FDwfDeviceCloseAll()

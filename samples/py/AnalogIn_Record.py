@@ -2,10 +2,6 @@
    DWF Python Example
    Author:  Digilent, Inc.
    Revision: 10/17/2013
-
-   Requires:                       
-       Python 2.7, numpy, matplotlib
-       python-dateutil, pyparsing
 """
 from __future__ import division
 from __future__ import print_function
