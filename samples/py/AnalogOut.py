@@ -1,16 +1,18 @@
 """
-This is a merged file created from 'AnalogIn_Record.py', 'AnalogOut_Play.py' and 'AnalogIO_AnalogDiscovery2_Power.py'.
+Analog_Out.py Problems Description: Generates the intended waveform in the amplitude set.
+The waveforms figure and the FFT does not seem to be affected by the three commands FDwfAnalogOutRunSet,
+FDwfAnalogOutWaitSet and FDwfAnalogOutRepeatSet. The number of periods also seem to be fixed around 5 or 6.
+Further evaluations to fix this problem is to be undertaken.
+Code Edit Notes: FDwfAnalogInBufferSizeSet was used and FDwfAnalogInRecordLengthSet and FDwfAnalogInAcquisitionModeSet
+were not used in this file.
 """
 from __future__ import division
 from __future__ import print_function
 import ctypes
 from builtins import range
-import scipy
 from matplotlib import pyplot as plt
 from numpy import *
 from past.utils import old_div
-from ctypes import *
-from scipy.io import wavfile
 from dwfconstants import *
 import time
 import sys
@@ -26,42 +28,28 @@ else:
 
 
 # Function to generate the waveform at various frequencies
-def wave_generation(frequency_list, N=4096):
+def wave_generation(number_period_list, N=4096):
     time_period = np.arange(0, N) / N
     waveform = np.zeros((N,))
-    for frequency in frequency_list:
-        waveform += sin(2 * pi * frequency * time_period)
+    for period in number_period_list:
+        waveform += sin(2 * pi * period * time_period)
     waveform /= np.max(np.abs(waveform))
-    wavfile.write(str("sinusoid.wav"), N, waveform)
+    return waveform
 
 
 # Input the Frequencies list
-freq_list = [3, 5, 7]
-wave_generation(freq_list)
-rate, data = scipy.io.wavfile.read('sinusoid.wav')
-print("Rate: " + str(rate))
-print("Size: " + str(data.size))
-print("Type: " + str(np.dtype(data[0])))
-# AnalogOut expects double normalized to +/-1 value
-dataf = data.astype(np.float64)
-if np.dtype(data[0]) == np.int8 or np.dtype(data[0]) == np.uint8:
-    print("Scaling: UINT8")
-    dataf /= 128.0
-    dataf -= 1.0
-elif np.dtype(data[0]) == np.int16:
-    print("Scaling: INT16")
-    dataf /= 32768.0
-elif np.dtype(data[0]) == np.int32:
-    print("Scaling: INT32")
-    dataf /= 2147483648.0
-data_c = (ctypes.c_double * len(dataf))(*dataf)
-plt.plot(data)
+period_list = [3, 5, 7]
+data_extract = wave_generation(period_list)
+data_c = (ctypes.c_double * len(data_extract))(*data_extract)
+plt.figure(1)
+plt.plot(data_extract)
 plt.show()
 
 # Declare Constants
-nSamples = int(131.072e3)
-hzFreq = c_double(1000)
-cSamples = 4096
+nSamples = c_int(1024)  # Number of Samples: 131.072e3
+Sampling_Frequency = c_double(150000)  # Sampling Frequency > 20 * max(period_list) * base frequency
+cSamples = 4096  # Waveform Samples
+baseFrequency = 1000  # 1kHz
 fLost = 0
 fCorrupted = 0
 
@@ -127,121 +115,50 @@ for i in range(1, 2):
         dwf.FDwfAnalogIOEnableSet(hdwf, c_int(False))
         dwf.FDwfAnalogIOEnableSet(hdwf, c_int(True))
 
-print("Preparing to read sample...")
+print("Preparing to read samples...")
 
-# samples between -1 and +1
-# for i in range(0, len(wave)):
-#     wave[i] = 1.0 * i / cSamples
+t = time.time()
 
-# # Generate samples normalized to ±1
-# for i in range(0, 4096):
-#     i = i+1
-#     rgdSamples = 2.0*i/4096-1
+dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_bool(True))
+dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), AnalogOutNodeCarrier, funcCustom)  # funcCustom
+dwf.FDwfAnalogOutNodeDataSet(hdwf, c_int(0), AnalogOutNodeCarrier, data_c, c_int(cSamples))
+dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(baseFrequency))
+dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(1.0))
 
-print("Playing audio...")
-iPlay = 0
-dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), 0, c_bool(True))
-dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), 0, funcCustom)  # funcCustom
-dwf.FDwfAnalogOutRepeatSet(hdwf, c_int(0), c_int(100))
-sRun = 1.0 * data.size / rate
-print("Length: " + str(sRun))
-dwf.FDwfAnalogOutRunSet(hdwf, c_int(0), c_double(sRun))
-dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), 0, c_double(1000))
-dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), 0, c_double(1.0))
-# prime the buffer with the first chunk of data
-cBuffer = c_int(0)
-dwf.FDwfAnalogOutNodeDataInfo(hdwf, c_int(0), 0, 0, byref(cBuffer))
-if cBuffer.value > data.size:
-    cBuffer.value = data.size
-dwf.FDwfAnalogOutNodeDataSet(hdwf, c_int(0), 0, data_c, cBuffer)
-iPlay += cBuffer.value
+dwf.FDwfAnalogOutRunSet(hdwf, c_int(0), c_double(1))
+dwf.FDwfAnalogOutWaitSet(hdwf, c_int(0), c_double(0))  # wait one pulse time
+dwf.FDwfAnalogOutRepeatSet(hdwf, c_int(0), c_int(0))
+
 dwf.FDwfAnalogOutConfigure(hdwf, c_int(0), c_bool(True))
 
-# # Enable First Channel
-# dwf.FDwfAnalogOutNodeEnableSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_bool(True))
-# # Set Custom Function
-# dwf.FDwfAnalogOutNodeFunctionSet(hdwf, c_int(0), AnalogOutNodeCarrier, funcCustom)
-# # Set custom waveform samples (and Normalize to ±1 values)
-# sRun = 1.0 * data.size / rate
-# print("Length: " + str(sRun))
-# # dwf.FDwfAnalogOutNodeDataSet(hdwf, c_int(0), AnalogOutNodeCarrier, rgdSamples, cSamples)
-# # Set Waveform Frequency
-# dwf.FDwfAnalogOutNodeFrequencySet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(1000))  # 1kHz Waveform Frequency
-# # 2V Amplitude, 4V Peak-to-peak (Sample value -1, output -2V and sample value +1, output 2V)
-# dwf.FDwfAnalogOutNodeAmplitudeSet(hdwf, c_int(0), AnalogOutNodeCarrier, c_double(1.0))
-# # Prime the buffer
-# cBuffer = c_int(0)
-# dwf.FDwfAnalogOutNodeDataInfo(hdwf, c_int(0), AnalogOutNodeCarrier, 0, byref(cBuffer))
-# if cBuffer.value > data.size : cBuffer.value = data.size
-# dwf.FDwfAnalogOutNodeDataSet(hdwf, c_int(0), AnalogOutNodeCarrier, data_c, cBuffer)
-# iPlay += cBuffer.value
-# # Run the waveform for a specified period
-# dwf.FDwfAnalogOutRunSet(hdwf, c_int(0), c_double(sRun))  # Run time
-# # Wait for a specific pulse time
-# dwf.FDwfAnalogOutWaitSet(hdwf, c_int(0), c_double(old_div(1.0, max(freq_list))))  # wait one pulse time
-# # Repeat the custom wave for a specific number of times
-# dwf.FDwfAnalogOutRepeatSet(hdwf, c_int(0), c_int(3))  # repeat 5 times
-# print("Generating Custom wave...")
-# # Start Signal Generation
-# dwf.FDwfAnalogOutConfigure(hdwf, c_int(0), c_bool(True))
-
+elapsed = time.time() - t
+print("elapsed time:" + str(elapsed) + "seconds")
 print("Generating waveform ...")
-print("done")
+time.sleep(0.1)
 
-########################################################################################################################
+print("done")
 # Set up acquisition
 dwf.FDwfAnalogInChannelEnableSet(hdwf, c_int(0), c_bool(True))
-dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(0), c_double(5))
-dwf.FDwfAnalogInAcquisitionModeSet(hdwf, acqmodeRecord)
-dwf.FDwfAnalogInFrequencySet(hdwf, hzFreq)
-dwf.FDwfAnalogInRecordLengthSet(hdwf, c_double(old_div(nSamples, hzFreq.value)))  # -1 infinite record length
+dwf.FDwfAnalogInChannelRangeSet(hdwf, c_int(0), c_double(4))
+dwf.FDwfAnalogInFrequencySet(hdwf, Sampling_Frequency)
+dwf.FDwfAnalogInBufferSizeSet(hdwf, nSamples)
 
 # wait at least 2 seconds for the offset to stabilize
 time.sleep(2)
 
 # begin acquisition
-dwf.FDwfAnalogInConfigure(hdwf, c_int(0), c_int(1))
+dwf.FDwfAnalogInConfigure(hdwf, c_bool(False), c_bool(True))
+
 print("waiting to finish")
 
-# cSamples changed to InitSamples
-InitSamples = 0
-while InitSamples < cSamples:
+while True:
     dwf.FDwfAnalogInStatus(hdwf, c_int(1), byref(sts))
-    if InitSamples == 0 and (sts == DwfStateConfig or sts == DwfStatePrefill or sts == DwfStateArmed):
-        # Acquisition not yet started.
-        print("0")
-        continue
+    if sts.value == DwfStateDone.value:
+        break
+    time.sleep(0.1)
+print("Acquisition done")
 
-    dwf.FDwfAnalogInStatusRecord(hdwf, byref(cAvailable), byref(cLost), byref(cCorrupted))
-
-    InitSamples += cLost.value
-
-    if cLost.value:
-        fLost = 1
-    if cCorrupted.value:
-        fCorrupted = 1
-
-    if cAvailable.value == 0:
-        continue
-
-    if InitSamples + cAvailable.value > cSamples:
-        cAvailable = c_int(nSamples - InitSamples)
-    # get channel 1 data
-    dwf.FDwfAnalogInStatusData(hdwf, c_int(0), byref(rgdSamples, sizeof(c_double) * InitSamples), cAvailable)
-    # get channel 2 data
-    # dwf.FDwfAnalogInStatusData(hdwf, c_int(1), byref(rgdSamples, sizeof(c_double) * cSamples), cAvailable)
-    InitSamples += cAvailable.value
-
-print("Recording finished")
-if fLost:
-    print("Samples were lost! Reduce frequency")
-if fCorrupted:
-    print("Samples could be corrupted! Reduce frequency")
-
-# f = open("record.csv", "w")
-# for v in rgdSamples:
-#     f.write("%s\n" % v)
-# f.close()
+dwf.FDwfAnalogInStatusData(hdwf, c_int(0), rgdSamples, nSamples)
 
 rgpy = [0.0] * len(rgdSamples)
 for i in range(0, len(rgpy)):
@@ -256,7 +173,7 @@ for y in range(0, cSamples):
     Freq.append(y / 0.262144)
 
 # Plot voltage range against Time
-plt.figure(1)
+plt.figure(2)
 plt.plot(Time, rgpy)
 plt.xlabel('Time (s)')
 plt.ylabel('Voltage (V)')
@@ -266,12 +183,13 @@ plt.show()
 # Plot fft
 a = np.array(rgpy)
 A = fft(a) / len(a)
-plt.figure(2)
+plt.figure(3)
 plt.semilogy(Freq, abs(A))
 plt.xlabel('Frequency (Hz)')
 plt.ylabel('Logarithmic Scale - Voltage (V)')
 plt.title('Voltage range - FFT')
 plt.show()
 
-# dwf.FDwfDeviceClose(hdwf)
-# dwf.FDwfDeviceCloseAll()
+dwf.FDwfDeviceClose(hdwf)
+dwf.FDwfDeviceCloseAll()
+
